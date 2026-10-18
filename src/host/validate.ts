@@ -83,8 +83,6 @@ export function validateResult(result: ProcessResult, context: Context): string[
   } else if (context.processor === context.manifest.views) {
     problems.push("views: the views processor must return views");
   }
-  if (result.metadata?.title !== undefined) text(result.metadata.title, 300, "metadata.title");
-  if (result.metadata?.description !== undefined) text(result.metadata.description, 2000, "metadata.description");
   let segments = result.search ?? [];
   if (segments.length > MAX_SEGMENTS) problems.push(`search: more than ${MAX_SEGMENTS} segments`);
   segments.forEach((segment, index) => {

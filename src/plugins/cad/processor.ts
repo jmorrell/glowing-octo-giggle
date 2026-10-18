@@ -45,7 +45,6 @@ export default class CadProcessor extends WorkerEntrypoint implements ProcessorE
       lists.push({ label: "Assembly", items: model.usages.map((u) => `${byId.get(u.child)?.name ?? u.child} in ${byId.get(u.parent)?.name ?? u.parent}`) });
     }
     return {
-      metadata: { title: name, description: model.description },
       search,
       views: {
         card: { title: name, subtitle: `${model.parts.length} parts · ${model.schema}`, badges: ["cad"] },

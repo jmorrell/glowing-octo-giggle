@@ -55,7 +55,6 @@ export default class ParquetProcessor extends WorkerEntrypoint implements Proces
     // expose it, so it travels in this plugin's own data artifact.
     await host.putArtifact("table.json", JSON.stringify({ byteLength: request.original.byteLength }), "application/json");
     return {
-      metadata: { title: name },
       search,
       views: {
         card: { title: name, subtitle: `${rows.toLocaleString("en-US")} rows · ${columns.length} columns`, badges: ["parquet"] },

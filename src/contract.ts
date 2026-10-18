@@ -94,7 +94,6 @@ export interface OriginalFacts {
 }
 
 export interface ProcessResult {
-  metadata?: { title?: string; description?: string };
   /** Exactly what becomes searchable for this output. Replaced atomically on reprocessing. */
   search?: SearchSegment[];
   /** Only the manifest's `views` processor may return views. */

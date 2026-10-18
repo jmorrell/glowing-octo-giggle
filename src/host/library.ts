@@ -395,7 +395,7 @@ export class Library extends DurableObject<Env> {
         runId,
         release.manifest.version,
         run.revision_id,
-        JSON.stringify({ metadata: result.metadata, views: result.views }),
+        JSON.stringify({ views: result.views }),
         now(),
       );
       this.sql.exec("UPDATE run SET state = 'committed' WHERE id = ?", runId);

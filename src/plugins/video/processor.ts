@@ -31,7 +31,6 @@ export default class VideoProcessor extends WorkerEntrypoint implements Processo
     if (!EBML_MAGIC.every((byte, index) => head[index] === byte)) throw new Error("Not a WebM/Matroska file");
     let name = title(request);
     return {
-      metadata: { title: name },
       search: [{ text: name }],
       views: {
         card: { title: name, subtitle: "Video", image: { processor: "frames", name: "poster.bmp" }, badges: ["video"] },
