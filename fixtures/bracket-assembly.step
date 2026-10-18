@@ -1,0 +1,18 @@
+ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('Synthetic bracket assembly for the extension contract experiment'),'2;1');
+FILE_NAME('bracket-assembly.step','2026-10-17T12:00:00',('Synthetic Author'),('Example Org'),'hand-written fixture','experiment','');
+FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));
+ENDSEC;
+DATA;
+#1=APPLICATION_CONTEXT('automotive design');
+#10=PRODUCT('BRACKET','Mounting bracket','L-shaped steel bracket, 3 mm',(#1));
+#20=PRODUCT('PLATE','Base plate','6 mm aluminium plate with four holes',(#1));
+#30=PRODUCT('BOLT-M6','M6 bolt','ISO 4017 M6x20 hex bolt',(#1));
+#40=NEXT_ASSEMBLY_USAGE_OCCURRENCE('1','bracket on plate','',#20,#10,$);
+#41=NEXT_ASSEMBLY_USAGE_OCCURRENCE('2','bolt through bracket','',#10,#30,$);
+#50=CARTESIAN_POINT('',(0.,0.,0.));
+#51=CARTESIAN_POINT('',(40.,0.,0.));
+#52=CARTESIAN_POINT('',(40.,30.,0.));
+ENDSEC;
+END-ISO-10303-21;

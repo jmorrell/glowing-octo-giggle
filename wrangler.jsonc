@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "magpie-extension-contract",
+  "main": "src/host/worker.ts",
+  "compatibility_date": "2026-09-29",
+  "compatibility_flags": ["nodejs_compat"],
+  "worker_loaders": [{ "binding": "LOADER" }],
+  "durable_objects": {
+    "bindings": [
+      { "name": "LIBRARY", "class_name": "Library" },
+      { "name": "VENDOR", "class_name": "Vendor" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Library", "Vendor"] }],
+  "r2_buckets": [{ "binding": "BLOBS", "bucket_name": "magpie-extension-contract" }],
+  "workflows": [{ "name": "process-item", "binding": "PROCESS", "class_name": "ProcessWorkflow" }]
+}
