@@ -17,6 +17,10 @@ async function attempt(probes: Probe[], label: string, action: () => Promise<unk
 
 export default class HostileProcessor extends WorkerEntrypoint {
   async process(request: ProcessRequest, host: HostCapabilities): Promise<ProcessResult> {
+    if (request.processor === "ui-probe") {
+      // Supplies a custom view so the browser experiment can load the probe component.
+      return { views: { card: { title: "ui probe" }, detail: { template: "custom", component: "probe", fallback: { template: "record", fields: [] } } } };
+    }
     if (request.processor === "bad-result") {
       return {
         search: [{ text: "x", target: { type: "plugin", plugin: "example.video", value: "#1", label: "someone else's selector" } }],

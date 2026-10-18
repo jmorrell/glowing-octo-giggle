@@ -8,3 +8,12 @@ export const hostileManifest = (processors: string[] = ["probe"]): PluginManifes
   views: processors[0],
   services: [],
 });
+
+export const hostileUiManifest = (): PluginManifest => ({
+  id: "test.hostile-ui",
+  version: "1.0.0",
+  recognizes: [{ extensions: [".probe"] }],
+  processors: ["ui-probe"],
+  views: "ui-probe",
+  services: [],
+});

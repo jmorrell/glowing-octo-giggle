@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src/plugins/**/viewer.ts", "src/plugins/**/component.ts", "browser/**/*.ts", "playwright.config.ts"],
+  "exclude": ["src/generated/**"]
+}

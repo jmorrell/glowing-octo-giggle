@@ -1,7 +1,7 @@
 // Browser component for the CAD plugin. A stand-in for a 3D viewer: it draws one box per
 // part instead of geometry, but exercises the same boundary a real viewer would cross.
 import type { ComponentHost, PluginSelector } from "../../contract";
-import type { Part } from "./processor";
+import type { Part } from "./parts";
 
 declare const magpie: ComponentHost;
 

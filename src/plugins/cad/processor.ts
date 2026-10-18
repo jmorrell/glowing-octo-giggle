@@ -1,9 +1,8 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 import type { HostCapabilities, ProcessRequest, ProcessResult, ProcessorEntrypoint, SearchSegment } from "../../contract";
+import type { Part } from "./parts";
 
 declare const INCLUDE_ASSEMBLY: boolean; // v2 also reports assembly relationships
-
-export type Part = { entity: string; id: string; name: string; description: string };
 
 // Enough ISO 10303-21 for this experiment: one entity per line, quoted string arguments.
 // STEP files from real CAD tools need a proper parser (and are often far larger).
