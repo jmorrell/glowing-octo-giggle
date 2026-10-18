@@ -77,9 +77,10 @@ export function itemPage(itemId: string, weakContainment: boolean): Response {
       let item;
       let component = null; // { port, pluginId }
       let load = async () => { item = await (await fetch("/api/items/" + ITEM)).json(); };
+      // Addresses inside host-standard files (thumbnails.json) are plugin data: check them.
       let addressUrl = (address) => {
         let output = item.statuses.find((status) => status.processor === address?.processor)?.output;
-        return output ? "/api/items/" + ITEM + "/artifacts/" + output.runId + "/" + address.name : null;
+        return output && /^[a-z0-9][a-z0-9._-]{0,99}$/.test(address.name) ? "/api/items/" + ITEM + "/artifacts/" + output.runId + "/" + address.name : null;
       };
       let saveAnnotation = async (selectors, note) => {
         let response = await fetch("/api/items/" + ITEM + "/annotations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ selectors, note }) });

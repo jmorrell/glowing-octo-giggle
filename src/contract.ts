@@ -1,11 +1,13 @@
-// The Magpie extension contract under test.
+// The Magpie extension contract, as tested in this repository.
 //
-// Three kinds of declarations live here, and they are enforced in different places:
-//   1. Plugin release: data a plugin ships. The host validates it at install time.
-//   2. Plugin hooks: code the host invokes. Processors run in a Dynamic Worker with no
-//      network and no bindings; components run in an opaque-origin sandboxed iframe.
-//   3. Host capabilities and persisted data: what the host lends to one invocation, and
-//      what it stores. Authority is checked by the host on every call, never by these types.
+//   Release            data a plugin ships; validated by the host at install
+//   Plugin hooks       code the host invokes: a processor in a Dynamic Worker with no network
+//                      and no bindings, and optional components in an opaque-origin iframe
+//   Host capabilities  what the host lends one invocation; checked by the host on every call
+//   Persisted data     what the host stores, renders, and owns
+//
+// Types describe the protocol. They enforce nothing: every rule here is checked at runtime by
+// src/host (see validate.ts, library.ts, plugin-host.ts, and the component host in ui.ts).
 
 // ---------------------------------------------------------------------------------------
 // Identity
@@ -14,7 +16,6 @@
 export type ItemId = string;
 /** One immutable original of an item. A refetch or an authored edit creates a new revision. */
 export type RevisionId = string;
-export type RunId = string;
 export type PluginId = string;
 export type ProcessorName = string;
 export type ComponentName = string;
@@ -29,21 +30,21 @@ export type ArtifactAddress = { processor: ProcessorName; name: ArtifactName };
 export type ContentRef = "original" | ArtifactAddress;
 
 // ---------------------------------------------------------------------------------------
-// 1. Plugin release
+// Release
 // ---------------------------------------------------------------------------------------
 
 export interface PluginRelease {
   manifest: PluginManifest;
   /** ES modules for the processor isolate; `processor.js` is the main module. */
   processorModules: Record<string, string>;
-  /** Browser modules, one per component, evaluated inside the component iframe. */
-  componentModules?: Record<ComponentName, string>;
+  /** One browser module per component, evaluated inside the component frame. */
+  componentModules?: Record<ComponentName, ComponentModule>;
 }
 
 export interface PluginManifest {
   id: PluginId;
   version: string;
-  /** Declarative; the host matches inputs without running plugin code. */
+  /** Declarative; the host picks one plugin per item without running plugin code. */
   recognizes: Recognizer[];
   /** Each processor produces one output that commits independently. Runs in this order. */
   processors: ProcessorName[];
@@ -53,6 +54,7 @@ export interface PluginManifest {
   services: ServiceName[];
 }
 
+/** Most specific evidence wins: hosts, then extensions, then exact, then wildcard types. */
 export interface Recognizer {
   mediaTypes?: string[]; // "video/webm" or "video/*"
   extensions?: string[]; // ".step"
@@ -62,14 +64,14 @@ export interface Recognizer {
 export type ServiceName = "transcribe" | "extract-frames" | "describe-image";
 
 // ---------------------------------------------------------------------------------------
-// 2. Plugin hooks
+// Plugin hooks
 // ---------------------------------------------------------------------------------------
 
-/** The default export of `processor.js` is a WorkerEntrypoint implementing this. */
+/** The default export of `processor.js`: a WorkerEntrypoint implementing this. */
 export interface ProcessorEntrypoint {
   /**
-   * `host` carries this run's authority and is valid only for this call. The isolate's env
-   * is empty and its global fetch/connect throw.
+   * Called once per attempt of one run. `host` carries that run's authority and works only
+   * during this call. Results are validated, then committed atomically for this processor.
    */
   process(request: ProcessRequest, host: HostCapabilities): Promise<ProcessResult>;
 }
@@ -94,33 +96,53 @@ export interface OriginalFacts {
 }
 
 export interface ProcessResult {
-  /** Exactly what becomes searchable for this output. Replaced atomically on reprocessing. */
+  /** Exactly what becomes searchable for this output; replaced atomically on reprocessing. */
   search?: SearchSegment[];
-  /** Only the manifest's `views` processor may return views. */
+  /** Required from, and only allowed from, the manifest's `views` processor. */
   views?: { card: CardView; detail: DetailView };
 }
 
-export interface SearchSegment {
-  text: string;
-  /** Where a hit should land. Omit for item-level text such as a title. */
-  target?: Selector;
+/**
+ * A component module is evaluated in a sandboxed `srcdoc` iframe (opaque origin; CSP allows
+ * no network, no WebAssembly, no workers). Its top level sees `magpie: ComponentHost`. It
+ * learns facts about the original, such as its length, only through its view's `data`.
+ */
+export type ComponentModule = string;
+
+// ---------------------------------------------------------------------------------------
+// Host capabilities
+// ---------------------------------------------------------------------------------------
+
+export interface ByteRange {
+  offset: number;
+  length: number;
 }
 
-/**
- * A browser component is a module evaluated in an iframe with an opaque origin, no network
- * (CSP connect-src/img-src/media-src limited to data:), and a single MessagePort to the host.
- * `host` is a proxy for ComponentHost; the module's top level receives it as `magpie`.
- */
+/** Lent to one processor run. Item, original, and grants come from the run, never arguments. */
+export interface HostCapabilities {
+  /** At most 8 MiB per call; read large originals in ranges. */
+  readOriginal(range?: ByteRange): Promise<Uint8Array>;
+  /** Stages an artifact for this run. The same name again in a retry replaces it. */
+  putArtifact(name: ArtifactName, body: Uint8Array | string, mediaType: string): Promise<ArtifactAddress>;
+  /** Service "transcribe", on this run's original. Memoized per tenant, original, and model. */
+  transcribe(options: { model: string }): Promise<TranscriptCue[]>;
+  /** Service "extract-frames". Memoized per tenant, original, and timestamp. */
+  extractFrames(options: { at: number[] }): Promise<{ at: number; image: Uint8Array; mediaType: string }[]>;
+  /** Service "describe-image". Memoized per tenant and image digest. */
+  describeImage(options: { image: Uint8Array; mediaType: string }): Promise<{ text: string; model: string }>;
+}
+
+/** Lent to one component frame for the item on screen. Writes go through host chrome only. */
 export interface ComponentHost {
-  /** The view's `data` artifact for this item, parsed as JSON. */
+  /** The view's `data` artifact, parsed as JSON. */
   getData(): Promise<unknown>;
-  /** Byte range of the item's original or one of the plugin's current artifacts. */
+  /** At most 1 MiB of the original or of one of this plugin's current artifacts. */
   read(ref: ContentRef, range: ByteRange): Promise<Uint8Array>;
-  /** Selectors only: annotation bodies stay in host chrome. */
+  /** This plugin's selectors on the item. Annotation bodies stay in host chrome. */
   getAnnotations(): Promise<{ id: string; selector: PluginSelector }[]>;
-  /** Opens the host's composer. The user saves in host chrome; the component cannot write. */
+  /** Opens the host's composer; the user saves there. The component cannot write. */
   proposeAnnotation(selector: PluginSelector): Promise<void>;
-  /** Host-to-component notifications: annotations changed, or "show this target". */
+  /** Events sent before the first listener (such as a deep-link focus) are held for it. */
   onEvent(listener: (event: ComponentEvent) => void): void;
 }
 
@@ -129,25 +151,17 @@ export type ComponentEvent =
   | { type: "focus"; selector: PluginSelector };
 
 // ---------------------------------------------------------------------------------------
-// 3a. Host capabilities lent to one processor run
+// Persisted data
 // ---------------------------------------------------------------------------------------
 
-export interface ByteRange {
-  offset: number;
-  length: number;
-}
+// Regenerable output: one committed output per (item, plugin, processor) = its artifacts,
+// search segments, and (for the views processor) views. Replaced only by a newer committed
+// run; kept, frozen, when the plugin is removed.
 
-export interface HostCapabilities {
-  /** At most 8 MiB per call; read large originals in ranges. */
-  readOriginal(range?: ByteRange): Promise<Uint8Array>;
-  /** Stages an artifact for this run. Same name again in a retry replaces it. */
-  putArtifact(name: ArtifactName, body: Uint8Array | string, mediaType: string): Promise<ArtifactAddress>;
-  /** Service "transcribe": runs on this run's original. Memoized per tenant and original. */
-  transcribe(options: { model: string }): Promise<TranscriptCue[]>;
-  /** Service "extract-frames". Memoized per tenant, original, and timestamp. */
-  extractFrames(options: { at: number[] }): Promise<{ at: number; image: Uint8Array; mediaType: string }[]>;
-  /** Service "describe-image". Memoized per tenant and image digest. */
-  describeImage(options: { image: Uint8Array; mediaType: string }): Promise<{ text: string; model: string }>;
+export interface SearchSegment {
+  text: string;
+  /** Where a hit lands. Omit for item-level text such as a title. */
+  target?: Selector;
 }
 
 export interface TranscriptCue {
@@ -155,10 +169,6 @@ export interface TranscriptCue {
   end: number;
   text: string;
 }
-
-// ---------------------------------------------------------------------------------------
-// 3b. Views: data the host renders with its own templates
-// ---------------------------------------------------------------------------------------
 
 export interface CardView {
   title: string;
@@ -187,13 +197,22 @@ export interface CustomView {
   template: "custom";
   component: ComponentName;
   data?: ArtifactAddress;
-  /** Rendered when the component is unavailable: plugin removed, disabled, or failing. */
+  /** Rendered when the component is unavailable: plugin removed or component missing. */
   fallback: MediaView | RecordView;
 }
 
-// ---------------------------------------------------------------------------------------
-// 3c. Persisted user data: annotations
-// ---------------------------------------------------------------------------------------
+// Durable user data: annotations. Never written by plugins, never changed by reprocessing.
+
+export interface Annotation {
+  id: string;
+  item: ItemId;
+  /** The revision the user annotated. */
+  revision: RevisionId;
+  /** Most stable first. A transcript highlight is [time, text-quote]. */
+  selectors: Selector[];
+  note: string | null;
+  createdAt: number;
+}
 
 export type Selector = TimeSelector | TextQuoteSelector | PluginSelector;
 
@@ -214,9 +233,9 @@ export interface TextQuoteSelector {
 }
 
 /**
- * Opaque to the host. Must address the immutable original (e.g. a STEP entity id), not a
- * derived artifact, so reprocessing cannot invalidate it. `label` is what host chrome shows
- * when no component can resolve it.
+ * Opaque to the host. By convention it addresses the immutable original (e.g. a STEP entity
+ * id), so reprocessing cannot invalidate it; the host cannot check this. `label` is what host
+ * chrome shows when no component can place it.
  */
 export interface PluginSelector {
   type: "plugin";
@@ -225,20 +244,9 @@ export interface PluginSelector {
   label: string;
 }
 
-export interface Annotation {
-  id: string;
-  item: ItemId;
-  /** The revision the user annotated. */
-  revision: RevisionId;
-  /** Most stable first. A transcript highlight is [time, text-quote]. */
-  selectors: Selector[];
-  note: string | null;
-  createdAt: number;
-}
-
-/** Computed by the host on read; never stored. */
+/** Computed by the host on every read; never stored. */
 export type AnchorState =
   | "exact" // every host-resolvable selector matches the current outputs
   | "text-changed" // the time range still holds, but its quote is no longer in the transcript
-  | "orphaned" // cannot be placed; shown in a list, never moved to a guessed location
-  | "delegated"; // plugin selector; only the plugin's component can place it
+  | "orphaned" // cannot be placed; listed, never moved to a guessed location
+  | "delegated"; // a plugin selector; only that plugin's component can place it

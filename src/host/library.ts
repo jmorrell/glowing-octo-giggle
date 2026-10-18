@@ -557,11 +557,13 @@ export class Library extends DurableObject<Env> {
     if (!artifact) return undefined;
     let object = await this.env.BLOBS.get(artifact.r2_key);
     if (!object) return undefined;
-    if (artifact.media_type === "application/json") {
+    if (artifact.media_type !== "application/json") return { text: await object.text() };
+    // A plugin wrote this file; a malformed one leaves its quotes unplaceable, nothing more.
+    try {
       let { cues } = await object.json<{ cues: TranscriptCue[] }>();
-      return { text: cueText(cues), cues };
-    }
-    return { text: await object.text() };
+      if (cues.every((cue) => Number.isFinite(cue.start) && Number.isFinite(cue.end) && typeof cue.text === "string")) return { text: cueText(cues), cues };
+    } catch {}
+    return undefined;
   }
 
   async getItem(itemId: string): Promise<ItemResponse | null> {
