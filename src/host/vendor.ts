@@ -8,14 +8,14 @@ export const TRANSCRIPTS: Record<string, TranscriptCue[]> = {
   "fast-1": [
     { start: 0, end: 4, text: "Welcome to the bridge inspection walkthrough." },
     { start: 4, end: 9, text: "The north cable anchorage shows surface rust." },
-    { start: 9, end: 14, text: "We recommend repainting before winter." },
+    { start: 9, end: 14, text: "We recommend repainting before winter, before the first frost." },
   ],
   // A later model segments differently and words some passages differently.
   "accurate-2": [
     { start: 0, end: 3.5, text: "Welcome to the bridge inspection walk-through." },
     { start: 3.5, end: 6.5, text: "The north cable anchorage" },
     { start: 6.5, end: 9, text: "shows light surface rust." },
-    { start: 9, end: 14, text: "We recommend re-coating before winter." },
+    { start: 9, end: 14, text: "We recommend re-coating before winter, before the first frost." },
   ],
 };
 
