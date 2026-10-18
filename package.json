@@ -17,6 +17,7 @@
     "@vitest/runner": "4.1.11",
     "@vitest/snapshot": "4.1.11",
     "esbuild": "0.28.1",
+    "hyparquet": "1.31.2",
     "typescript": "5.9.2",
     "vitest": "4.1.11",
     "wrangler": "4.145.0"

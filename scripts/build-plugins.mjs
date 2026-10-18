@@ -12,6 +12,8 @@ async function bundle(entry, define = {}, platform = "neutral") {
     target: "es2022",
     write: false,
     external: ["cloudflare:*"],
+    // Isolates and component frames both get a package's browser build, never its Node build.
+    conditions: ["workerd", "worker", "browser"],
     define,
     logLevel: "error",
   });
@@ -26,6 +28,7 @@ let releases = [
   { key: "video@2.0.0", manifest: 'videoManifest("2.0.0")', processor: await bundle("src/plugins/video/processor.ts", model("accurate-2")) },
   { key: "cad@1.0.0", manifest: 'cadManifest("1.0.0")', processor: await bundle("src/plugins/cad/processor.ts", assembly(false)), components: { viewer } },
   { key: "cad@2.0.0", manifest: 'cadManifest("2.0.0")', processor: await bundle("src/plugins/cad/processor.ts", assembly(true)), components: { viewer } },
+  { key: "parquet@1.0.0", manifest: "parquetManifest()", processor: await bundle("src/plugins/parquet/processor.ts"), components: { table: await bundle("src/plugins/parquet/component.ts", {}, "browser") } },
   { key: "hostile@1.0.0", manifest: "hostileManifest()", processor: await bundle("src/plugins/hostile/processor.ts") },
   { key: "hostile-bad-result@1.0.0", manifest: 'hostileManifest(["bad-result"])', processor: await bundle("src/plugins/hostile/processor.ts") },
   { key: "hostile-ui@1.0.0", manifest: "hostileUiManifest()", processor: await bundle("src/plugins/hostile/processor.ts"), components: { probe: await bundle("src/plugins/hostile/component.ts", {}, "browser") } },
@@ -36,6 +39,7 @@ let lines = [
   'import type { PluginRelease } from "../contract";',
   'import { cadManifest } from "../plugins/cad/manifest";',
   'import { hostileManifest, hostileUiManifest } from "../plugins/hostile/manifest";',
+  'import { parquetManifest } from "../plugins/parquet/manifest";',
   'import { videoManifest } from "../plugins/video/manifest";',
   "",
   "export const releases = {",
